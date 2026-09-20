@@ -11,62 +11,56 @@
 
 ---
 
-### Порядок локального воспроизведения
+## ПР02. Терминал, пакет и запуск turtlesim
 
-#### 1. Подготовка терминалов
-В терминалах настраивается окружение ROS 2 Jazzy и задаётся базовый домен:
+### Цель работы
+Создание и сборка ament-пакета `turtle_bringup`, написание launch-файла `sim.launch.py` для автоматического развёртывания узлов, исследование доставки управляющих сообщений через CLI и воспроизведение дефекта несовпадения имени топика (`/cmd_vel` vs `/turtle1/cmd_vel`).
+
+---
+
+### Порядок локального воспроизведения ПР02
+
+#### 1. Сборка пакета
 ```bash
 source /opt/ros/jazzy/setup.bash
-export ROS_DOMAIN_ID=16
+colcon build --symlink-install --packages-select turtle_bringup
+source install/setup.bash
 ```
 
-#### 2. Запуск исправного графа
-- **Терминал A (симулятор):**
-  ```bash
-  ros2 run turtlesim turtlesim_node
-  ```
-- **Терминал B (телеуправление с клавиатуры):**
-  ```bash
-  ros2 run turtlesim turtle_teleop_key
-  ```
-- **Терминал C (диагностика графа):**
-  ```bash
-  ros2 node list --no-daemon --spin-time 2
-  ros2 topic list -t
-  ros2 node info /turtlesim
-  ros2 topic type /turtle1/pose
-  ros2 topic echo /turtle1/pose --once
-  ros2 topic hz /turtle1/pose
-  ```
+#### 2. Запуск симулятора через launch
+```bash
+export ROS_DOMAIN_ID=16
+ros2 launch turtle_bringup sim.launch.py
+```
 
-#### 3. Воспроизведение дефекта (изоляция доменов)
-- В **Терминале B** перезапуск teleop в домене 17:
-  ```bash
-  export ROS_DOMAIN_ID=17
-  ros2 run turtlesim turtle_teleop_key
-  ```
-- В **Терминале C** попытка чтения позы в домене 17 (ожидается таймаут 5 с, код завершения 124):
-  ```bash
-  export ROS_DOMAIN_ID=17
-  timeout 5s ros2 topic echo /turtle1/pose turtlesim/msg/Pose --once
-  ```
+#### 3. Управление движением через CLI
+```bash
+# Получение начальной позы:
+ros2 topic echo /turtle1/pose --once
 
-#### 4. Восстановление связи
-- В **Терминале B** возврат в домен 16:
-  ```bash
-  export ROS_DOMAIN_ID=16
-  ros2 run turtlesim turtle_teleop_key
-  ```
-- В **Терминале C** чтение позы в домене 16 (поза успешно получена, код 0):
-  ```bash
-  export ROS_DOMAIN_ID=16
-  timeout 5s ros2 topic echo /turtle1/pose turtlesim/msg/Pose --once
-  ```
+# Отправка команды движения (линейная скорость 1.0, угловая 0.5):
+ros2 topic pub --once /turtle1/cmd_vel geometry_msgs/msg/Twist '{linear: {x: 1.0}, angular: {z: 0.5}}'
+
+# Проверка изменившейся позы:
+ros2 topic echo /turtle1/pose --once
+```
+
+#### 4. Воспроизведение дефекта неверного имени топика
+```bash
+# Публикация в /cmd_vel (у симулятора подписчик на /turtle1/cmd_vel):
+ros2 topic pub --rate 1 --wait-matching-subscriptions 0 /cmd_vel geometry_msgs/msg/Twist '{linear: {x: 1.0}, angular: {z: 0.5}}'
+
+# Проверка конечных точек топиков:
+ros2 topic info /cmd_vel --verbose          # Subscription count: 0
+ros2 topic info /turtle1/cmd_vel --verbose  # Subscription count: 1 (/turtlesim)
+```
+
+#### 5. Восстановление доставки
+Отправка в корректный топик `/turtle1/cmd_vel` восстанавливает движение черепахи.
 
 ---
 
 ### Автоматическая проверка
-Проверка соответствия контракту сдачи:
 ```bash
-python3 .course-kit/v1/tools/check_practice.py PR01 --submission .
+python3 .course-kit/v1/tools/check_practice.py PR02 --submission .
 ```
