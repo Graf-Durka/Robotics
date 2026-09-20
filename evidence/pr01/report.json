@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "practice_id": "PR01",
+  "commit": "4da40f0ff363190a0c88a2788b8aa314c9ac92e1",
+  "course_kit": {
+    "version": "v1-w02",
+    "archive_sha256": "5d210c431e32418f45e2cffa9dd2028116c7a9520a36f3c7079c778cd73437a8"
+  },
+  "commands": [
+    "ros2 doctor --report > evidence/pr01/doctor.txt 2>&1",
+    "ros2 run turtlesim turtlesim_node",
+    "ros2 run turtlesim turtle_teleop_key",
+    "ros2 node list --no-daemon --spin-time 2",
+    "ros2 topic list -t",
+    "ros2 node info /turtlesim",
+    "ros2 topic type /turtle1/pose",
+    "ros2 topic echo /turtle1/pose --once",
+    "ros2 topic hz /turtle1/pose",
+    "timeout 5s ros2 topic echo /turtle1/pose turtlesim/msg/Pose --once > evidence/pr01/pose-broken.txt 2>&1",
+    "timeout 5s ros2 topic echo /turtle1/pose turtlesim/msg/Pose --once > evidence/pr01/pose-fixed.txt 2>&1"
+  ],
+  "tests": [
+    {
+      "name": "nodes_and_topics_discovery",
+      "status": "passed"
+    },
+    {
+      "name": "pose_topic_frequency_measurement",
+      "status": "passed"
+    },
+    {
+      "name": "domain_isolation_defect_reproduction",
+      "status": "passed"
+    },
+    {
+      "name": "domain_reconnection_proof",
+      "status": "passed"
+    }
+  ],
+  "defect": {
+    "reproducer": "При запуске подписчика в домене ROS_DOMAIN_ID=17 при работающем симуляторе в ROS_DOMAIN_ID=16 данные не поступают; команда timeout 5s ros2 topic echo /turtle1/pose turtlesim/msg/Pose --once завершается с таймаутом и кодом возврата 124.",
+    "root_cause": "Сетевая изоляция участников ROS 2 на уровне DDS Discovery (SPDP): порты мультикаст-обнаружения вычисляются по формуле (7400 + 250 * domainID), поэтому участники в разных доменах слушают разные порты и не видят анонсов друг друга.",
+    "proof_after": "После возврата подписчика в домен ROS_DOMAIN_ID=16 та же команда проверки timeout 5s ros2 topic echo /turtle1/pose turtlesim/msg/Pose --once мгновенно получает позу и завершается успешно с кодом возврата 0."
+  },
+  "claims": {
+    "public_tests_passed": true,
+    "defect_reproduced": true,
+    "defect_fixed": true
+  },
+  "time": {
+    "contact_academic_hours": 2,
+    "self_study_hours": 2
+  },
+  "ai_used": true
+}

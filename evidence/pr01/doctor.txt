@@ -1,0 +1,60 @@
+/opt/ros/jazzy/lib/python3.12/site-packages/ros2doctor/api/__init__.py: 162: UserWarning: Fail to call PackageReport class functions.
+
+   NETWORK CONFIGURATION
+inet         : 127.0.0.1
+inet4        : ['127.0.0.1']
+inet6        : ['::1']
+netmask      : 255.0.0.0
+device       : lo
+flags        : 73<RUNNING,LOOPBACK,UP>
+mtu          : 65536
+inet         : 10.9.85.22
+inet4        : ['10.9.85.22']
+ether        : 94:bb:43:ec:4d:d5
+inet6        : ['fe80::300e:4c5b:1090:2ee8%wlp2s0']
+netmask      : 255.255.248.0
+device       : wlp2s0
+flags        : 4099<BROADCAST,MULTICAST,UP>
+mtu          : 1500
+broadcast    : 10.9.87.255
+inet         : 10.0.85.1
+inet4        : ['10.0.85.1']
+netmask      : 255.255.255.255
+device       : outline-tun0
+flags        : 4241<NOARP,MULTICAST,PTP,UP>
+mtu          : 1500
+
+   PLATFORM INFORMATION
+system           : Linux
+platform info    : Linux-6.17.0-23-generic-x86_64-with-glibc2.39
+release          : 6.17.0-23-generic
+processor        : x86_64
+
+   QOS COMPATIBILITY LIST
+compatibility status    : No publisher/subscriber pairs found
+
+   RMW MIDDLEWARE
+middleware name    : rmw_fastrtps_cpp
+
+   ROS 2 INFORMATION
+distribution name      : jazzy
+distribution type      : ros2
+distribution status    : active
+release platforms      : {'debian': ['bookworm'], 'rhel': ['9'], 'ubuntu': ['noble']}
+
+   TOPIC LIST
+topic               : /turtle1/cmd_vel
+publisher count     : 0
+subscriber count    : 1
+topic               : /turtle1/color_sensor
+publisher count     : 1
+subscriber count    : 0
+topic               : /turtle1/pose
+publisher count     : 1
+subscriber count    : 0
+topic               : /turtle1/rotate_absolute/_action/feedback
+publisher count     : 1
+subscriber count    : 0
+topic               : /turtle1/rotate_absolute/_action/status
+publisher count     : 1
+subscriber count    : 0

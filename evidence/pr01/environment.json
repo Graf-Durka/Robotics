@@ -1,0 +1,19 @@
+{
+  "runtime": "native",
+  "os": {
+    "name": "Ubuntu",
+    "version": "24.04.4 LTS (Noble Numbat)",
+    "kernel": "7.0.0-31-generic"
+  },
+  "ros": {
+    "distribution": "jazzy",
+    "rmw": "rmw_fastrtps_cpp"
+  },
+  "gazebo": {
+    "version": "none"
+  },
+  "experiment": {
+    "base_domain_id": 16,
+    "broken_domain_id": 17
+  }
+}
