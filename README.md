@@ -4,63 +4,69 @@
 
 ---
 
-## ПР01. Окружение и граф ROS 2
+## ПР03. Первая нода: поза и команда
 
 ### Цель работы
-Исследование графа вычислений ROS 2 (`turtlesim`), анализ механизма обнаружения узлов (DDS Discovery) и изоляции взаимодействия через `ROS_DOMAIN_ID`.
+Создание и сборка Python-пакета `patrol` с управляющей нодой `patrol_node`. Реализация подписки на топик `/turtle1/pose` (`turtlesim/msg/Pose`), периодической публикации управляющих команд в относительный топик `cmd_vel` (`geometry_msgs/msg/Twist`) по таймеру с частотой 10 Гц (0.1 с), модульное тестирование логики вычисления скоростей (`compute_cmd_vel`), а также исследование механизма переназначения топиков (remap) для связи относительного имени `cmd_vel` с `/turtle1/cmd_vel`.
 
 ---
 
-## ПР02. Терминал, пакет и запуск turtlesim
+### Порядок локального воспроизведения ПР03
 
-### Цель работы
-Создание и сборка ament-пакета `turtle_bringup`, написание launch-файла `sim.launch.py` для автоматического развёртывания узлов, исследование доставки управляющих сообщений через CLI и воспроизведение дефекта несовпадения имени топика (`/cmd_vel` vs `/turtle1/cmd_vel`).
-
----
-
-### Порядок локального воспроизведения ПР02
-
-#### 1. Сборка пакета
+#### 1. Сборка пакетов
 ```bash
 source /opt/ros/jazzy/setup.bash
-colcon build --symlink-install --packages-select turtle_bringup
+colcon build --symlink-install --packages-select turtle_bringup patrol
 source install/setup.bash
 ```
 
-#### 2. Запуск симулятора через launch
+#### 2. Запуск тестов
+```bash
+python3 -s -m pytest src/patrol/test
+```
+
+#### 3. Запуск симулятора
 ```bash
 export ROS_DOMAIN_ID=16
 ros2 launch turtle_bringup sim.launch.py
 ```
 
-#### 3. Управление движением через CLI
+#### 4. Воспроизведение дефекта относительного имени топика
 ```bash
-# Получение начальной позы:
+# Получение начальной позы черепахи:
 ros2 topic echo /turtle1/pose --once
 
-# Отправка команды движения (линейная скорость 1.0, угловая 0.5):
-ros2 topic pub --once /turtle1/cmd_vel geometry_msgs/msg/Twist '{linear: {x: 1.0}, angular: {z: 0.5}}'
+# Запуск ноды патрулирования без ремапа:
+export ROS_DOMAIN_ID=16
+ros2 run patrol patrol
 
-# Проверка изменившейся позы:
+# Проверка конечных точек топиков в отдельном терминале:
+ros2 topic info /cmd_vel --verbose          # Subscription count: 0 (нет подписчиков)
+ros2 topic info /turtle1/cmd_vel --verbose  # Subscription count: 1, Publisher count: 0
+
+# Проверка позы (черепаха остаётся на месте):
 ros2 topic echo /turtle1/pose --once
 ```
 
-#### 4. Воспроизведение дефекта неверного имени топика
+#### 5. Устранение дефекта с помощью переназначения (remap)
 ```bash
-# Публикация в /cmd_vel (у симулятора подписчик на /turtle1/cmd_vel):
-ros2 topic pub --rate 1 --wait-matching-subscriptions 0 /cmd_vel geometry_msgs/msg/Twist '{linear: {x: 1.0}, angular: {z: 0.5}}'
+# Запуск ноды с ремапом топика cmd_vel на /turtle1/cmd_vel:
+export ROS_DOMAIN_ID=16
+ros2 run patrol patrol --ros-args -r cmd_vel:=/turtle1/cmd_vel
 
-# Проверка конечных точек топиков:
-ros2 topic info /cmd_vel --verbose          # Subscription count: 0
-ros2 topic info /turtle1/cmd_vel --verbose  # Subscription count: 1 (/turtlesim)
+# Проверка связности конечных точек:
+ros2 topic info /turtle1/cmd_vel --verbose  # Subscription count: 1, Publisher count: 1
+
+# Замер частоты публикации команд:
+ros2 topic hz /turtle1/cmd_vel
+
+# Проверка изменившейся позы (черепаха движется по окружности):
+ros2 topic echo /turtle1/pose --once
 ```
-
-#### 5. Восстановление доставки
-Отправка в корректный топик `/turtle1/cmd_vel` восстанавливает движение черепахи.
 
 ---
 
 ### Автоматическая проверка
 ```bash
-python3 .course-kit/v1/tools/check_practice.py PR02 --submission .
+python3 .course-kit/v1/tools/check_practice.py PR03 --submission .
 ```
