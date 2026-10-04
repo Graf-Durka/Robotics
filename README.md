@@ -4,14 +4,14 @@
 
 ---
 
-## ПР03. Первая нода: поза и команда
+## ПР04. Параметризуем движение
 
 ### Цель работы
-Создание и сборка Python-пакета `patrol` с управляющей нодой `patrol_node`. Реализация подписки на топик `/turtle1/pose` (`turtlesim/msg/Pose`), периодической публикации управляющих команд в относительный топик `cmd_vel` (`geometry_msgs/msg/Twist`) по таймеру с частотой 10 Гц (0.1 с), модульное тестирование логики вычисления скоростей (`compute_cmd_vel`), а также исследование механизма переназначения топиков (remap) для связи относительного имени `cmd_vel` с `/turtle1/cmd_vel`.
+Параметризация параметров движения и таймера ноды `patrol` (`linear_speed`, `turn_rate`, `publish_hz`). Валидация входных значений параметров без разрушения активного состояния (отклонение некорректных значений, в том числе 0.0, отрицательных чисел, NaN и значений вне допустимых диапазонов). Динамическое изменение периода таймера (`1 / publish_hz`) с корректной остановкой и уничтожением предыдущего таймера при изменении частоты.
 
 ---
 
-### Порядок локального воспроизведения ПР03
+### Порядок локального воспроизведения ПР04
 
 #### 1. Сборка пакетов
 ```bash
@@ -25,48 +25,47 @@ source install/setup.bash
 python3 -s -m pytest src/patrol/test
 ```
 
-#### 3. Запуск симулятора
+#### 3. Запуск симулятора и ноды патрулирования
 ```bash
 export ROS_DOMAIN_ID=16
+
+# В терминале 1: запуск симулятора
 ros2 launch turtle_bringup sim.launch.py
-```
 
-#### 4. Воспроизведение дефекта относительного имени топика
-```bash
-# Получение начальной позы черепахи:
-ros2 topic echo /turtle1/pose --once
-
-# Запуск ноды патрулирования без ремапа:
-export ROS_DOMAIN_ID=16
-ros2 run patrol patrol
-
-# Проверка конечных точек топиков в отдельном терминале:
-ros2 topic info /cmd_vel --verbose          # Subscription count: 0 (нет подписчиков)
-ros2 topic info /turtle1/cmd_vel --verbose  # Subscription count: 1, Publisher count: 0
-
-# Проверка позы (черепаха остаётся на месте):
-ros2 topic echo /turtle1/pose --once
-```
-
-#### 5. Устранение дефекта с помощью переназначения (remap)
-```bash
-# Запуск ноды с ремапом топика cmd_vel на /turtle1/cmd_vel:
-export ROS_DOMAIN_ID=16
+# В терминале 2: запуск ноды patrol с переназначением топика
 ros2 run patrol patrol --ros-args -r cmd_vel:=/turtle1/cmd_vel
+```
 
-# Проверка связности конечных точек:
-ros2 topic info /turtle1/cmd_vel --verbose  # Subscription count: 1, Publisher count: 1
+#### 4. Динамическое управление параметрами через CLI
+```bash
+# Получение текущего значения частоты публикации:
+ros2 param get /patrol publish_hz
 
-# Замер частоты публикации команд:
+# Изменение частоты публикации на 5.0 Гц:
+ros2 param set /patrol publish_hz 5.0
+
+# Замер частоты топика (подтверждение изменения потока на ~5 Гц):
 ros2 topic hz /turtle1/cmd_vel
 
-# Проверка изменившейся позы (черепаха движется по окружности):
-ros2 topic echo /turtle1/pose --once
+# Попытка установки недопустимой частоты 0.0 (отклоняется валидатором):
+ros2 param set /patrol publish_hz 0.0
+
+# Проверка сохранения прежней частоты (5.0 Гц):
+ros2 param get /patrol publish_hz
+```
+
+#### 5. Вызов сервиса очистки и инспекция actions
+```bash
+# Вызов сервиса очистки экрана turtlesim:
+ros2 service call /clear std_srvs/srv/Empty {}
+
+# Поиск доступных действий (actions):
+ros2 action list -t
 ```
 
 ---
 
 ### Автоматическая проверка
 ```bash
-python3 .course-kit/v1/tools/check_practice.py PR03 --submission .
+python3 .course-kit/v1/tools/check_practice.py PR04 --submission .
 ```
