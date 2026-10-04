@@ -1,0 +1,26 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-7.4.4, pluggy-1.4.0 -- /usr/bin/python3
+cachedir: .pytest_cache
+rootdir: /media/denis/C/NSU_rutina/3_Course/Robotics/src/patrol
+plugins: launch-testing-3.4.11, ament-lint-0.17.5, ament-pep257-0.17.5, launch-testing-ros-0.26.12, ament-copyright-0.17.5, ament-flake8-0.17.5, ament-xmllint-0.17.5
+collecting ... collected 5 items
+
+test/test_copyright.py::test_copyright SKIPPED (No copyright header ...) [ 20%]
+test/test_flake8.py::test_flake8 PASSED                                  [ 40%]
+test/test_patrol.py::test_compute_cmd_vel_before_first_pose PASSED       [ 60%]
+test/test_patrol.py::test_compute_cmd_vel_after_pose PASSED              [ 80%]
+test/test_pep257.py::test_pep257 PASSED                                  [100%]
+
+=============================== warnings summary ===============================
+test/test_flake8.py::test_flake8
+test/test_flake8.py::test_flake8
+test/test_flake8.py::test_flake8
+test/test_flake8.py::test_flake8
+test/test_flake8.py::test_flake8
+test/test_flake8.py::test_flake8
+test/test_flake8.py::test_flake8
+test/test_flake8.py::test_flake8
+  Warning: This process (pid=287662) is multi-threaded, use of fork() may lead to deadlocks in the child.
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=================== 4 passed, 1 skipped, 8 warnings in 0.53s ===================

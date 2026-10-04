@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "practice_id": "PR03",
+  "commit": "bf875d059ce8a7680154bf679a2a43eb333e723a",
+  "course_kit": {
+    "version": "v1-w04",
+    "archive_sha256": "fec6b4e886c19146078bf69fbf90a19279a4cd33f656642395350b299efeb226"
+  },
+  "commands": [
+    "colcon build --symlink-install --packages-select turtle_bringup patrol",
+    "source install/setup.bash",
+    "python3 -s -m pytest -v test/",
+    "export ROS_DOMAIN_ID=16",
+    "ros2 launch turtle_bringup sim.launch.py",
+    "ros2 topic echo /turtle1/pose --once",
+    "ros2 run patrol patrol",
+    "ros2 topic info /cmd_vel --verbose",
+    "ros2 topic info /turtle1/cmd_vel --verbose",
+    "ros2 run patrol patrol --ros-args -r cmd_vel:=/turtle1/cmd_vel",
+    "ros2 topic hz /turtle1/cmd_vel"
+  ],
+  "tests": [
+    {
+      "name": "test_compute_cmd_vel_before_first_pose",
+      "status": "passed"
+    },
+    {
+      "name": "test_compute_cmd_vel_after_pose",
+      "status": "passed"
+    },
+    {
+      "name": "test_flake8",
+      "status": "passed"
+    },
+    {
+      "name": "test_pep257",
+      "status": "passed"
+    },
+    {
+      "name": "defect_reproduced_unremapped",
+      "status": "passed"
+    },
+    {
+      "name": "defect_fixed_with_remap",
+      "status": "passed"
+    },
+    {
+      "name": "publish_frequency_10hz_verified",
+      "status": "passed"
+    }
+  ],
+  "defect": {
+    "reproducer": "При запуске ноды patrol без переназначения (ros2 run patrol patrol) команды отправляются в относительный топик /cmd_vel. Вывод команды ros2 topic info /cmd_vel --verbose показывает Subscription count: 0, а вывод ros2 topic info /turtle1/cmd_vel --verbose показывает Publisher count: 0. Черепаха остается неподвижной.",
+    "root_cause": "Нода patrol объявляет паблишер с относительным именем 'cmd_vel', которое в корневом пространстве имен резолвится как '/cmd_vel'. Симулятор turtlesim подписан на топик '/turtle1/cmd_vel'. Без аргумента переназначения или явного указания пространства имен топики не связываются в DDS.",
+    "proof_after": "При запуске ноды с ремапом (ros2 run patrol patrol --ros-args -r cmd_vel:=/turtle1/cmd_vel) топик связывается с подписчиком /turtlesim (Publisher count: 1, Subscription count: 1). Команда ros2 topic hz /turtle1/cmd_vel фиксирует стабильную частоту 10.0 Гц, а ros2 topic echo /turtle1/pose подтверждает непрерывное круговое движение черепахи."
+  },
+  "claims": {
+    "public_tests_passed": true,
+    "defect_reproduced": true,
+    "defect_fixed": true
+  },
+  "time": {
+    "contact_academic_hours": 2,
+    "self_study_hours": 2
+  },
+  "ai_used": true
+}
