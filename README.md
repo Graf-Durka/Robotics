@@ -4,68 +4,69 @@
 
 ---
 
-## ПР04. Параметризуем движение
+## ПР05. Launch, QoS и повтор записи
 
 ### Цель работы
-Параметризация параметров движения и таймера ноды `patrol` (`linear_speed`, `turn_rate`, `publish_hz`). Валидация входных значений параметров без разрушения активного состояния (отклонение некорректных значений, в том числе 0.0, отрицательных чисел, NaN и значений вне допустимых диапазонов). Динамическое изменение периода таймера (`1 / publish_hz`) с корректной остановкой и уничтожением предыдущего таймера при изменении частоты.
+Создание пакета `course_bringup` с launch-файлом `patrol.launch.py`, обеспечивающим единый запуск системы в изолированном пространстве имён (`namespace:=robot_a`), переназначение топиков команд на глобальный симулятор (`/turtle1/cmd_vel`), параметризацию надёжности подписчика (`subscriber_reliability`) и опциональную запись топиков в формат MCAP (`ros2 bag record`). Воспроизведение дефекта несовместимости политик качества обслуживания (QoS Incompatibility: `best_effort` издатель сенсора vs `reliable` подписчик), устранение несовместимости и проверка воспроизведения записи (replay) с переопределением QoS через `config/qos-overrides.yaml`.
 
 ---
 
-### Порядок локального воспроизведения ПР04
+### Порядок локального воспроизведения ПР05
 
 #### 1. Сборка пакетов
 ```bash
 source /opt/ros/jazzy/setup.bash
-colcon build --symlink-install --packages-select turtle_bringup patrol
+colcon build --symlink-install --packages-select turtle_bringup patrol course_bringup
 source install/setup.bash
 ```
 
 #### 2. Запуск тестов
 ```bash
 python3 -s -m pytest src/patrol/test
+python3 -s -m pytest src/course_bringup/test
+python3 -s -m pytest src/turtle_bringup/test
 ```
 
-#### 3. Запуск симулятора и ноды патрулирования
+#### 3. Запуск глобального симулятора
+```bash
+export ROS_DOMAIN_ID=16
+ros2 launch turtle_bringup sim.launch.py
+```
+
+#### 4. Воспроизведение дефекта QoS (до исправления)
 ```bash
 export ROS_DOMAIN_ID=16
 
-# В терминале 1: запуск симулятора
-ros2 launch turtle_bringup sim.launch.py
+# Запуск системы с несовместимым reliable-подписчиком:
+ros2 launch course_bringup patrol.launch.py namespace:=robot_a subscriber_reliability:=reliable record:=false
 
-# В терминале 2: запуск ноды patrol с переназначением топика
-ros2 run patrol patrol --ros-args -r cmd_vel:=/turtle1/cmd_vel
+# В отдельном терминале попытка прочитать /robot_a/sensor_pose с reliable QoS:
+# Топик виден в ros2 topic list, но сообщения не приходят (таймаут 3с):
+timeout 3s ros2 topic echo /robot_a/sensor_pose --qos-reliability reliable --once > evidence/pr05/qos-before.txt
 ```
 
-#### 4. Динамическое управление параметрами через CLI
+#### 5. Устранение дефекта и запись MCAP (после исправления)
 ```bash
-# Получение текущего значения частоты публикации:
-ros2 param get /patrol publish_hz
+# Перезапуск с согласованным best_effort QoS и включенной записью:
+ros2 launch course_bringup patrol.launch.py namespace:=robot_a subscriber_reliability:=best_effort record:=true bag_dir:=evidence/pr05/bag
 
-# Изменение частоты публикации на 5.0 Гц:
-ros2 param set /patrol publish_hz 5.0
-
-# Замер частоты топика (подтверждение изменения потока на ~5 Гц):
-ros2 topic hz /turtle1/cmd_vel
-
-# Попытка установки недопустимой частоты 0.0 (отклоняется валидатором):
-ros2 param set /patrol publish_hz 0.0
-
-# Проверка сохранения прежней частоты (5.0 Гц):
-ros2 param get /patrol publish_hz
+# Проверка успешного получения сообщения:
+timeout 3s ros2 topic echo /robot_a/sensor_pose --qos-reliability best_effort --once > evidence/pr05/qos-after.txt
 ```
 
-#### 5. Вызов сервиса очистки и инспекция actions
+#### 6. Повтор записи (Replay) и инспекция bag
 ```bash
-# Вызов сервиса очистки экрана turtlesim:
-ros2 service call /clear std_srvs/srv/Empty {}
+# Проигрывание записанного потока с переопределением профиля QoS:
+ros2 bag play evidence/pr05/bag --qos-profile-overrides-path config/qos-overrides.yaml
 
-# Поиск доступных действий (actions):
-ros2 action list -t
+# Просмотр метаданных записи:
+ros2 bag info evidence/pr05/bag >> evidence/pr05/qos-after.txt
+cp evidence/pr05/bag/metadata.yaml evidence/pr05/bag-metadata.yaml
 ```
 
 ---
 
 ### Автоматическая проверка
 ```bash
-python3 .course-kit/v1/tools/check_practice.py PR04 --submission .
+python3 .course-kit/v1/tools/check_practice.py PR05 --submission .
 ```

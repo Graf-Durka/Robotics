@@ -5,6 +5,7 @@ from rcl_interfaces.msg import SetParametersResult
 import rclpy
 from rclpy.node import Node
 from rclpy.parameter import Parameter
+from rclpy.qos import QoSHistoryPolicy, QoSProfile, QoSReliabilityPolicy
 from turtlesim.msg import Pose
 
 
@@ -41,16 +42,29 @@ class PatrolNode(Node):
         self.declare_parameter('linear_speed', 0.5)
         self.declare_parameter('turn_rate', 0.3)
         self.declare_parameter('publish_hz', 10.0)
+        self.declare_parameter('subscriber_reliability', 'reliable')
 
         self.linear_speed = self.get_parameter('linear_speed').value
         self.turn_rate = self.get_parameter('turn_rate').value
         self.publish_hz = self.get_parameter('publish_hz').value
+        sub_rel_str = self.get_parameter('subscriber_reliability').value
+
+        if sub_rel_str == 'best_effort':
+            sub_rel_policy = QoSReliabilityPolicy.BEST_EFFORT
+        else:
+            sub_rel_policy = QoSReliabilityPolicy.RELIABLE
+
+        pose_qos = QoSProfile(
+            reliability=sub_rel_policy,
+            history=QoSHistoryPolicy.KEEP_LAST,
+            depth=10
+        )
 
         self.subscription = self.create_subscription(
             Pose,
-            '/turtle1/pose',
+            'sensor_pose',
             self.pose_callback,
-            10
+            pose_qos
         )
         self.publisher = self.create_publisher(
             Twist,
