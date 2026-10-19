@@ -1,0 +1,3 @@
+[WARN] [_ros2cli_18552]: New publisher discovered on topic '/robot_a/sensor_pose', offering incompatible QoS. No messages will be received from it. Last incompatible policy: RELIABILITY
+[WARN] [robot_a.pose_relay]: New subscription discovered on topic 'sensor_pose', requesting incompatible QoS. No messages will be sent to it. Last incompatible policy: RELIABILITY
+[ERROR] timeout 3s: no messages received on topic /robot_a/sensor_pose with --qos-reliability reliable
