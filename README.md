@@ -4,19 +4,26 @@
 
 ---
 
-## ПР05. Launch, QoS и повтор записи
+## ПР06. Модель робота, tf2 и QoS преобразований
 
 ### Цель работы
-Создание пакета `course_bringup` с launch-файлом `patrol.launch.py`, обеспечивающим единый запуск системы в изолированном пространстве имён (`namespace:=robot_a`), переназначение топиков команд на глобальный симулятор (`/turtle1/cmd_vel`), параметризацию надёжности подписчика (`subscriber_reliability`) и опциональную запись топиков в формат MCAP (`ros2 bag record`). Воспроизведение дефекта несовместимости политик качества обслуживания (QoS Incompatibility: `best_effort` издатель сенсора vs `reliable` подписчик), устранение несовместимости и проверка воспроизведения записи (replay) с переопределением QoS через `config/qos-overrides.yaml`.
+Создание пакета описания кинематической модели робота `course_description` с описанием на базе Xacro (`vehicle.urdf.xacro`) для колёсного шасси с рулевым управлением Аккермана. Модель параметризует базу колёс (`wheel_base = 0.8`), колею (`wheel_separation = 0.62`), радиус колеса (`wheel_radius = 0.12`), кузов и сенсорный обвес (`camera_link`, `lidar_link`, `imu_link`). Реализация launch-файла `display.launch.py` с узлом `robot_state_publisher`, исследование поведения QoS топика `/tf_static` (`transient_local` vs `volatile`), воспроизведение и исправление дефекта привязки дерева трансформаций (неверный родительский фрейм для `lidar_link`).
 
 ---
 
-### Порядок локального воспроизведения ПР05
+### Структура пакета `course_description`
+- `urdf/vehicle.urdf.xacro`: параметризованная кинематическая модель робота и сенсоров.
+- `launch/display.launch.py`: запуск публикации дерева tf через `robot_state_publisher`.
+- `test/test_urdf.py`: автоматические тесты структуры URDF, параметров геометрии и иерархии фреймов.
+
+---
+
+### Порядок локального воспроизведения ПР06
 
 #### 1. Сборка пакетов
 ```bash
 source /opt/ros/jazzy/setup.bash
-colcon build --symlink-install --packages-select turtle_bringup patrol course_bringup
+colcon build --symlink-install --packages-select turtle_bringup patrol course_bringup course_description
 source install/setup.bash
 ```
 
@@ -25,48 +32,34 @@ source install/setup.bash
 python3 -s -m pytest src/patrol/test
 python3 -s -m pytest src/course_bringup/test
 python3 -s -m pytest src/turtle_bringup/test
+python3 -s -m pytest src/course_description/test
 ```
 
-#### 3. Запуск глобального симулятора
+#### 3. Проверка синтаксиса и структуры URDF
 ```bash
-export ROS_DOMAIN_ID=16
-ros2 launch turtle_bringup sim.launch.py
+xacro src/course_description/urdf/vehicle.urdf.xacro > /tmp/vehicle.urdf
+check_urdf /tmp/vehicle.urdf
 ```
 
-#### 4. Воспроизведение дефекта QoS (до исправления)
+#### 4. Запуск robot_state_publisher и проверка QoS /tf_static
 ```bash
-export ROS_DOMAIN_ID=16
+# В терминале 1:
+ros2 launch course_description display.launch.py
 
-# Запуск системы с несовместимым reliable-подписчиком:
-ros2 launch course_bringup patrol.launch.py namespace:=robot_a subscriber_reliability:=reliable record:=false
+# В терминале 2:
+# 1. Проверка информации о топике:
+ros2 topic info /tf_static --verbose
 
-# В отдельном терминале попытка прочитать /robot_a/sensor_pose с reliable QoS:
-# Топик виден в ros2 topic list, но сообщения не приходят (таймаут 3с):
-timeout 3s ros2 topic echo /robot_a/sensor_pose --qos-reliability reliable --once > evidence/pr05/qos-before.txt
-```
+# 2. Получение статических трансформаций с durability transient_local (успешно, exit=0):
+timeout 4 ros2 topic echo /tf_static --once --qos-durability transient_local --qos-reliability reliable; echo "exit=$?"
 
-#### 5. Устранение дефекта и запись MCAP (после исправления)
-```bash
-# Перезапуск с согласованным best_effort QoS и включенной записью:
-ros2 launch course_bringup patrol.launch.py namespace:=robot_a subscriber_reliability:=best_effort record:=true bag_dir:=evidence/pr05/bag
-
-# Проверка успешного получения сообщения:
-timeout 3s ros2 topic echo /robot_a/sensor_pose --qos-reliability best_effort --once > evidence/pr05/qos-after.txt
-```
-
-#### 6. Повтор записи (Replay) и инспекция bag
-```bash
-# Проигрывание записанного потока с переопределением профиля QoS:
-ros2 bag play evidence/pr05/bag --qos-profile-overrides-path config/qos-overrides.yaml
-
-# Просмотр метаданных записи:
-ros2 bag info evidence/pr05/bag >> evidence/pr05/qos-after.txt
-cp evidence/pr05/bag/metadata.yaml evidence/pr05/bag-metadata.yaml
+# 3. Попытка чтения с durability volatile (сообщения отбрасываются, таймаут, exit=124):
+timeout 4 ros2 topic echo /tf_static --once --qos-durability volatile --qos-reliability reliable; echo "exit=$?"
 ```
 
 ---
 
 ### Автоматическая проверка
 ```bash
-python3 .course-kit/v1/tools/check_practice.py PR05 --submission .
+python3 .course-kit/v1/tools/check_practice.py PR06 --submission .
 ```
