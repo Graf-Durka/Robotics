@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "practice_id": "PR06",
+  "commit": "91a4fa6440131e50faa2fb76b6e02dc68396cf08",
+  "course_kit": {
+    "version": "v1-w07",
+    "archive_sha256": "001f7ec79674d09a0f7eff2ad0935f58c95101b0cf200425c368f41579d6a31c"
+  },
+  "commands": [
+    "colcon build --symlink-install --packages-select turtle_bringup patrol course_bringup course_description",
+    "source install/setup.bash",
+    "python3 -s -m pytest src/patrol/test src/course_bringup/test src/turtle_bringup/test src/course_description/test",
+    "xacro src/course_description/urdf/vehicle.urdf.xacro > /tmp/vehicle.urdf",
+    "check_urdf /tmp/vehicle.urdf > evidence/pr06/model-check.txt",
+    "ros2 launch course_description display.launch.py",
+    "ros2 topic info /tf_static --verbose",
+    "timeout 4 ros2 topic echo /tf_static --once --qos-durability transient_local --qos-reliability reliable",
+    "timeout 4 ros2 topic echo /tf_static --once --qos-durability volatile --qos-reliability reliable"
+  ],
+  "tests": [
+    {
+      "name": "test_urdf_parses_and_root_is_valid",
+      "status": "passed"
+    },
+    {
+      "name": "test_required_links_exist",
+      "status": "passed"
+    },
+    {
+      "name": "test_sensor_parent_joints",
+      "status": "passed"
+    },
+    {
+      "name": "test_kinematic_dimensions",
+      "status": "passed"
+    },
+    {
+      "name": "test_flake8_course_description",
+      "status": "passed"
+    },
+    {
+      "name": "test_pep257_course_description",
+      "status": "passed"
+    },
+    {
+      "name": "tf_static_transient_local_qos_verified",
+      "status": "passed"
+    },
+    {
+      "name": "tf_static_volatile_qos_timeout_verified",
+      "status": "passed"
+    },
+    {
+      "name": "defect_reproduced_lidar_parent_camera",
+      "status": "passed"
+    },
+    {
+      "name": "defect_fixed_lidar_parent_base_link",
+      "status": "passed"
+    }
+  ],
+  "defect": {
+    "reproducer": "При изменении родительского фрейма в lidar_joint с base_link на camera_link в описании vehicle.urdf.xacro (или в ходе автоматического теста иерархии связей) дерево tf фиксирует некорректную связь camera_link -> lidar_link. В результате преобразование координат лидара относительно базового фрейма робота вычисляется с двойным смещением по осям X и Z (суммируя смещения камеры и лидара), а тест test_sensor_parent_joints завершается с ошибкой AssertionError: lidar_joint parent must be 'base_link', got 'camera_link'.",
+    "root_cause": "В структуре кинематической модели робота лидар и камера являются независимыми датчиками, механически смонтированными непосредственно на платформе base_link в точке с координатами (0.28, 0.0, 0.38). Ошибочное указание camera_link в качестве родительского фрейма создаёт ложную кинематическую зависимость и искажает трансформацию облака точек сенсора.",
+    "proof_after": "Родительским звеном для lidar_joint установлен base_link с координатным смещением xyz=\"0.28 0.0 0.38\". Утилита check_urdf подтверждает, что base_link имеет 7 прямых потомков, включая camera_link, lidar_link и imu_link. Тест test_sensor_parent_joints успешно проходит, а топик /tf_static транслирует прямое преобразование base_link -> lidar_link с корректным смещением (0.28, 0.0, 0.38)."
+  },
+  "claims": {
+    "public_tests_passed": true,
+    "defect_reproduced": true,
+    "defect_fixed": true
+  },
+  "time": {
+    "contact_academic_hours": 2,
+    "self_study_hours": 2
+  },
+  "ai_used": true
+}
